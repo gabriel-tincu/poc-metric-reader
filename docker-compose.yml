@@ -1,0 +1,28 @@
+version: '3'
+services:
+  zookeeper:
+    image: zookeeper:latest
+    ports:
+      - "2181:2181"
+  kafka:
+    image: wurstmeister/kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "19091:9092"
+    environment:
+      KAFKA_BROKER_ID: 101
+      KAFKA_ADVERTISED_HOST_NAME: 192.168.178.34
+      KAFKA_ADVERTISED_PORT: 19091
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+      KAFKA_CREATE_TOPICS: "logging:3:2"
+    dns: 8.8.4.4
+    command: bash -c '/opt/kafka/bin/zookeeper-shell.sh zookeeper:2181 rmr /brokers/ids/101 && start-kafka.sh'
+  postgres:
+    image: postgres:12.1
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
