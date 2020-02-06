@@ -4,6 +4,7 @@ import settings
 import json
 import psycopg2
 import logging
+import copy
 log = logging.getLogger(__name__)
 
 
@@ -12,6 +13,8 @@ class MetricPublisher:
             self,
             publisher_config,
             publisher_class=kafka.KafkaProducer):
+        self.payload = None
+        publisher_config = copy.copy(publisher_config)
         self.topics = publisher_config.get('topics', 'metrics')
         if 'topics' in publisher_config:
             del publisher_config['topics']
@@ -20,18 +23,21 @@ class MetricPublisher:
             del publisher_config['timeout']
         self.publisher_class = publisher_class
         self.metric_generator = metrics.MetricsCollector().gather()
-        host = publisher_config.get('host', 'localhost')
-        log.info(f'Launching publisher for kafka host {host} and topic {self.topics}')
         self.publisher = publisher_class(**publisher_config)
 
     def publish_one(self, wait=True):
-        data = next(self.metric_generator)
-        log.info('New data from os metric collector {}'.format(data))
-        to_bytes = json.dumps(data).encode()
-        f = self.publisher.send(self.topics, to_bytes)
+        self.generate_payload()
+        log.info(f'sending {self.payload} on topic {self.topics}')
+        f = self.publisher.send(self.topics, self.payload)
         if wait:
-            f.get(timeout=self.push_timeout)
-            log.info('Message successfully sent')
+            result = f.get(timeout=self.push_timeout)
+            log.info(f'Message successfully sent: {result}')
+            return result
+
+    def generate_payload(self):
+        data = next(self.metric_generator)
+        log.debug('New data from os metric collector {}'.format(data))
+        self.payload = json.dumps(data).encode()
 
     def publish_forever(self):
         while True:
@@ -48,7 +54,7 @@ class PostgresStorage:
 
     def save(self, metric_data):
         try:
-            log.info(f"storing memory data {metric_data['memory']}")
+            log.debug(f"storing memory data {metric_data['memory']}")
             self.cursor.execute(
                 'INSERT INTO RAM (total, available, used, free, percent) '
                 'VALUES (%(total)s, %(available)s, '
@@ -95,30 +101,39 @@ class MetricSubscriber:
             pull_class=kafka.KafkaConsumer,
             storage_class=PostgresStorage
     ):
+        pull_config = copy.copy(pull_config)
+        push_config = copy.copy(push_config)
+        self.data = None
         self.storage = storage_class(**push_config)
         topics = pull_config.get('topics')
         if topics:
             del pull_config['topics']
+        log.info('Initializing consumer')
         self.provider = pull_class(topics, **pull_config)
 
-    def consume(self):
+    def consume_forever(self):
         while True:
             try:
-                self._save(self.get_data())
+                self.consume_one()
             except Exception as e:
                 log.exception(e)
 
-    def get_data(self):
+    def produce_data(self):
+        log.info(f'Waiting for a message on {self.provider.topics()}')
         message = next(self.provider)
-        log.info(f'Got message with key {message.key} off topic {message.topic}')
-        return message.value
+        log.info(
+            f'Got message with key {message.key} off topic {message.topic}')
+        self.data = message.value
 
     def consume_one(self):
-        byte_data = self.get_data()
-        self._save(byte_data)
+        self.produce_data()
+        self._save()
 
-    def _save(self, byte_data):
-        data = json.loads(byte_data.decode())
+    def _save(self):
+        if not self.data:
+            return
+        data = json.loads(self.data.decode())
         log.info('New message off queue: {}'.format(data))
-        self.storage.save(data)
+        res = self.storage.save(data)
         log.info('Message successfully saved')
+        return res

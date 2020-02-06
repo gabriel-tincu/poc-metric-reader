@@ -1,6 +1,7 @@
 import unittest
 import metrics
 
+
 class CollectorTest(unittest.TestCase):
 
     def test_result(self):
@@ -10,4 +11,4 @@ class CollectorTest(unittest.TestCase):
         self.assertIsNotNone(p)
         for k in ['memory', 'cpu', 'network', 'disk', 'swap']:
             self.assertIsNotNone(p[k])
-        self.assertTrue(len(p['disk']['usage']) > 0)
+        self.assertTrue(len(p['disk']) > 0)

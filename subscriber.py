@@ -12,4 +12,4 @@ if __name__ == '__main__':
         push_config=push_config,
     )
     log.info('Launching metric collector')
-    sub.consume()
+    sub.consume_forever()
