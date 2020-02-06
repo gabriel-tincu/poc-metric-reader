@@ -5,7 +5,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 class MetricsCollector:
-    def __init__(self, collect_interval=0.2):
+    def __init__(self, collect_interval=1.9):
         self.collect_interval = collect_interval
         # first value will be nonsensical
         psutil.cpu_percent()

@@ -1,34 +1,32 @@
 version: '3'
 services:
-  postgres:
-    image: postgres
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: aiven
   bootstrap_db:
     depends_on:
       - postgres
     image: postgres
     volumes:
       - "./init.sql:/tmp/init.sql"
-    environment:
-      PGHOST: postgres
-      PGUSER: postgres
-      PGPASSWORD: postgres
-      PGDATABASE: aiven
+    env_file:
+      - ${ENV_FILE:env}
     command: ["psql", "-f", "/tmp/init.sql"]
   publisher:
+    depends_on:
+      - kafka
+    env_file:
+      - ${ENV_FILE:env}
     build:
       context: .
-    image: publisher:7
+    image: publisher:17
     command: ["python", "publisher.py"]
   subscriber:
+    volumes:
+      - "/tmp:/tmp/"
+    env_file:
+      - ${ENV_FILE:env}
     depends_on:
       - bootstrap_db
+      - kafka
     build:
       context: .
-    image: subscriber:7
+    image: subscriber:17
     command: ["python", "subscriber.py"]
