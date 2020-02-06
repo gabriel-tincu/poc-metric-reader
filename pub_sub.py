@@ -1,5 +1,6 @@
 import metrics
 import kafka
+import settings
 import json
 import psycopg2
 import logging
@@ -11,12 +12,14 @@ class MetricPublisher:
             self,
             publisher_config,
             publisher_class=kafka.KafkaProducer):
-        self.topic = publisher_config.get('topic')
-        self.push_timeout = publisher_config.get('timeout')
+        self.topic = publisher_config.get('topic', 'metrics')
+        self.push_timeout = publisher_config.get('timeout', 60)
         self.publisher_class = publisher_class
         self.metric_generator = metrics.MetricsCollector().gather()
+        host = publisher_config.get('host', 'localhost')
+        log.info(f'Launching publisher for kafka host {host} and topic {self.topic}')
         self.publisher = publisher_class(
-            bootstrap_servers=publisher_config.get('host')
+            bootstrap_servers=publisher_config.get('host', 'localhost')
         )
 
     def publish_one(self, wait=True):
@@ -28,12 +31,14 @@ class MetricPublisher:
 
     def publish_forever(self):
         while True:
-            self.publish_one()
+            try:
+                self.publish_one()
+            except Exception as e:
+                log.exception(e)
 
 
 class PostgresStorage:
-    def __init__(self, connection_string='host=localhost dbname=aiven '
-                                         'user=postgres password=postgres'):
+    def __init__(self, connection_string=settings.POSTGRES_URI):
         self.conn = psycopg2.connect(connection_string)
         self.cursor = self.conn.cursor()
 
@@ -81,11 +86,17 @@ class MetricSubscriber:
             storage_class=PostgresStorage
     ):
         self.storage = storage_class(**push_config)
-        self.provider = pull_class(**pull_config)
+        topics = pull_config.get('topics')
+        if topics:
+            del pull_config['topics']
+        self.provider = pull_class(topics, **pull_config)
 
     def consume(self):
         for byte_data in self.provider:
-            self._save(byte_data)
+            try:
+                self._save(byte_data)
+            except Exception as e:
+                log.exception(e)
 
     def consume_one(self):
         byte_data = next(self.provider)
