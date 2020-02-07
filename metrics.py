@@ -1,11 +1,19 @@
 import psutil
+import os
 import time
 import logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.ERROR)
 
 
 class MetricsCollector:
     def __init__(self, collect_interval=1.9):
+        self.host_name = None
+        try:
+            self.host_name = os.uname().nodename
+        except:
+            pass
+        if not self.host_name:
+            self.host_name = "default"
         self.collect_interval = collect_interval
         # first value will be nonsensical
         psutil.cpu_percent()
@@ -21,7 +29,8 @@ class MetricsCollector:
             'swap': self._collect_swap(),
             'disk': self._collect_disk(),
             'cpu': self._collect_cpu(),
-            'network': self._collect_network()
+            'network': self._collect_network(),
+            'name': self.host_name
         }
 
     @staticmethod
@@ -52,7 +61,7 @@ class MetricsCollector:
             'percent': psutil.cpu_percent(),
             'idle': cpu.idle,
             'system': cpu.system,
-            'user': cpu.user
+            'usr': cpu.user
         }
 
     @staticmethod

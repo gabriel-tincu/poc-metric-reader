@@ -28,7 +28,7 @@ class MetricPublisher:
     def publish_one(self, wait=True):
         self.generate_payload()
         log.info(f'sending {self.payload} on topic {self.topics}')
-        f = self.publisher.send(self.topics, self.payload)
+        f = self.publisher.send(self.topics, self.payload, partition=0)
         if wait:
             result = f.get(timeout=self.push_timeout)
             log.info(f'Message successfully sent: {result}')
@@ -53,36 +53,40 @@ class PostgresStorage:
         self.cursor = self.conn.cursor()
 
     def save(self, metric_data):
+        for k in ['memory', 'swap', 'cpu', 'network']:
+            metric_data[k]['host'] = metric_data['name']
+        for entry in metric_data['disk']:
+            entry['host'] = metric_data['name']
         try:
             log.debug(f"storing memory data {metric_data['memory']}")
             self.cursor.execute(
-                'INSERT INTO RAM (total, available, used, free, percent) '
-                'VALUES (%(total)s, %(available)s, '
+                'INSERT INTO RAM (host, total, available, used, free, percent) '
+                'VALUES (%(host)s, %(total)s, %(available)s, '
                 '%(used)s, %(free)s, %(percent)s)',
                 metric_data['memory']
             )
             self.cursor.execute(
-                'INSERT INTO SWAP (total, used, free, percent) '
-                'VALUES (%(total)s, %(used)s, '
+                'INSERT INTO SWAP (host, total, used, free, percent) '
+                'VALUES (%(host)s, %(total)s, %(used)s, '
                 '%(free)s, %(percent)s)',
                 metric_data['swap']
             )
             self.cursor.execute(
-                'INSERT INTO CPU (percent, idle, system, usr) '
-                'VALUES (%(percent)s, %(idle)s, '
-                '%(system)s, %(user)s)',
+                'INSERT INTO CPU (host, percent, idle, system, usr) '
+                'VALUES (%(host)s, %(percent)s, %(idle)s, '
+                '%(system)s, %(usr)s)',
                 metric_data['cpu']
             )
             self.cursor.execute(
-                'INSERT INTO NETWORK (bytes_sent, bytes_recv) '
-                'VALUES (%(bytes_sent)s, %(bytes_recv)s)',
+                'INSERT INTO NETWORK (host, bytes_sent, bytes_recv) '
+                'VALUES (%(host)s, %(bytes_sent)s, %(bytes_recv)s)',
                 metric_data['network']
             )
             for dev_data in metric_data['disk']:
                 self.cursor.execute(
                     'INSERT INTO DISK '
-                    '(device, mountpoint, total, used, free, percent) '
-                    'VALUES (%(device)s, %(mountpoint)s, '
+                    '(host, device, mountpoint, total, used, free, percent) '
+                    'VALUES (%(host)s, %(device)s, %(mountpoint)s, '
                     '%(total)s, %(used)s, %(free)s, %(percent)s)',
                     dev_data
                 )
@@ -109,7 +113,9 @@ class MetricSubscriber:
         if topics:
             del pull_config['topics']
         log.info('Initializing consumer')
-        self.provider = pull_class(topics, **pull_config)
+        self.provider = pull_class(group_id='subscriber', **pull_config)
+        log.info(f'assigning topic {topics} partition 0')
+        self.provider.assign([kafka.TopicPartition(topics, 0)])
 
     def consume_forever(self):
         while True:
