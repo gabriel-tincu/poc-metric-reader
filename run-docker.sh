@@ -40,10 +40,9 @@ run-subscriber() {
     docker run --rm -it ${e} ${vol} ${image} python subscriber.py
 }
 
-
+psql ${PGURI} -f init.sql
 case $1 in
     tests)
-        psql ${PGURI} -f init.sql
         run-tests
     ;;
     publisher)

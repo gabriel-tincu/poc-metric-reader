@@ -17,12 +17,20 @@ if [[ ! -f ${KAFKA_KEY_FILE} || ! -f ${KAFKA_CERT_FILE} || ! -f ${KAFKA_CACERT_F
     echo "The kafka key and cert files should point to valid disk files"
     exit 1
 fi
-echo ${folder}
+
+init_sql() {
+    c=$(pwd)
+    cd ${folder}
+    psql ${PGURI} -f init.sql
+    cd ${c}
+}
+
+init_sql
+
 case $1 in
     tests)
         c=$(pwd)
         cd ${folder}
-        psql ${PGURI} -f init.sql
         python -m unittest
         status=$?
         cd ${c}
