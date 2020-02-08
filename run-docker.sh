@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 folder=$(dirname $0)
 image="metrics_homework:latest"
+
+if ! docker info 1>/dev/null; then
+    echo "Docker not installed or not started"
+    exit 1
+fi
+
 if ! docker build -t ${image} -f ${folder}/Dockerfile ${folder} ; then
     echo "Unable to build docker image"
     exit 1
