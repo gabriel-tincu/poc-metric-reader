@@ -1,5 +1,6 @@
 import metrics
 import kafka
+from kafka.admin import NewTopic
 import settings
 from json import loads, dumps, JSONDecodeError
 import psycopg2
@@ -12,12 +13,37 @@ class MessageDecodeException(Exception):
     pass
 
 
+def delete_topic(name):
+    cfg = copy.copy(settings.KAFKA_CONFIG)
+    del cfg['topics']
+    del cfg['consumer_timeout_ms']
+    admin = kafka.KafkaAdminClient(**cfg)
+    log.info(f'Attempting to delete topic {name}')
+    try:
+        admin.delete_topics([name])
+    except Exception as e:
+        log.exception(e)
+
+
+def create_topic(name):
+    cfg = copy.copy(settings.KAFKA_CONFIG)
+    del cfg['topics']
+    del cfg['consumer_timeout_ms']
+    admin = kafka.KafkaAdminClient(**cfg)
+    topic = NewTopic(name, 1, 1)
+    log.info(f'Attempting to create topic {name}')
+    try:
+        admin.create_topics([topic])
+    except Exception as e:
+        log.exception(e)
+
 class MetricPublisher:
     def __init__(
             self,
             publisher_config,
             publisher_class=kafka.KafkaProducer):
         self.payload = None
+        self.admin = None
         publisher_config = copy.copy(publisher_config)
         self.topics = publisher_config.get('topics', 'metrics')
         if 'topics' in publisher_config:

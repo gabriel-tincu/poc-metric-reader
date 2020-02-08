@@ -4,26 +4,14 @@ import settings
 import decimal
 import json
 from test_integration import clean_db, get_from_storage
-from kafka import KafkaAdminClient
-from kafka.admin import NewTopic
 from kafka.cluster import TopicPartition
 
 
 class TestEndToEnd(unittest.TestCase):
     def setUp(self):
         clean_db()
-        cfg = copy.copy(settings.KAFKA_CONFIG)
-        del cfg['topics']
-        del cfg['consumer_timeout_ms']
-
-        self.admin = KafkaAdminClient(**cfg)
-        try:
-            self.admin.create_topics(
-                [NewTopic(settings.KAFKA_TOPIC, 1, 1)],
-                timeout_ms=5000
-            )
-        except:
-            pass
+        delete_topic(settings.KAFKA_TOPIC)
+        create_topic(settings.KAFKA_TOPIC)
         self.publisher = MetricPublisher(settings.KAFKA_CONFIG)
         self.subscriber = MetricSubscriber(
             pull_config=settings.KAFKA_CONFIG,
@@ -59,5 +47,5 @@ class TestEndToEnd(unittest.TestCase):
                 self.assertAlmostEqual(sent, retrieved, 2, err_msg)
 
     def tearDown(self) -> None:
-        self.admin.delete_topics([settings.KAFKA_TOPIC])
+        delete_topic(settings.KAFKA_TOPIC)
         clean_db()

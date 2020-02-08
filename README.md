@@ -4,7 +4,6 @@ POC project composed of 2 components:
 
 #### Run it
 
-**Make sure you enable topic auto-create in your Aiven kafka service admin page OR use an already created topic**
 
 ##### Docker 
 
@@ -16,4 +15,16 @@ For example, to run the tests you would run `./run-docker.sh tests` and so on
 
 
 #### Normal 
+
 - make sure you have python3 and virtualenv installed
+- run `run.sh` with either of `tests publisher subscriber` as parameter. This will add a venv folder in the repo folder if it does not already exist, install the requirement file and run either the tests, publisher or subscriber
+
+#### Notes
+For ease of use (i have no way of knowing without further tests, weather the DB schema has been created or not) i will drop and recreate the PF tables on each launch
+This should be fine for testing, but when it comes to pub / sub, it is preferred to launch the pub before the sub, as only the latter uses the DB.
+
+E2E tests were a pain in the a** due to the way the background threads communicate with the broker and the general file like architecture of a kafka topic. Long story short it took a while to figure that a `seek` method existed and what it did.
+ 
+One can make use of the docker compose file for local development. I have https://github.com/wurstmeister/kafka-docker to thank for the single broker kafka instance. 
+The shell scripts will not work with that though, as they expect fully populated certificate and key files (as per a proper Aiven service config)
+I tried using uuids as the topic names on each new test run, but either due to the async nature of kafka or due to my low level of knowledge regarding the system (more probable), that setup seemed to block indefinitely.
