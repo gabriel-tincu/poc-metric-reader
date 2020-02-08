@@ -1,6 +1,6 @@
 import os
 import logging
-logging.basicConfig(level=logging.ERROR)
+logging.basicConfig(level=logging.INFO)
 
 KAFKA_HOST = os.getenv('KAFKA_HOST', '192.168.178.34')
 KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'metrics')

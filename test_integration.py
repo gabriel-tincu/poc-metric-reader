@@ -1,7 +1,7 @@
-from pub_sub import *
+from subscriber import *
+from publisher import *
 import unittest
 import settings
-import metrics
 import json
 import copy
 import decimal
@@ -69,6 +69,17 @@ subscriber = MetricSubscriber(
     storage_class=PostgresStorage
 )
 
+
+class CollectorTest(unittest.TestCase):
+
+    def test_result(self):
+        # do i really need this??
+        collector = MetricsCollector()
+        p = next(collector.gather())
+        self.assertIsNotNone(p)
+        for k in ['memory', 'cpu', 'network', 'disk', 'swap']:
+            self.assertIsNotNone(p[k])
+        self.assertTrue(len(p['disk']) > 0)
 
 class TestPublisher(unittest.TestCase):
     # i am seriously out of ideas...
@@ -149,7 +160,7 @@ class TestPersistence(unittest.TestCase):
         clean_db()
 
     def test_persist_and_retrieve(self):
-        metric_producer = metrics.MetricsCollector()
+        metric_producer = MetricsCollector()
         data = metric_producer._collect()
         subscriber.data = data
         subscriber._save()
