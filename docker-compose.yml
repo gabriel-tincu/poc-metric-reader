@@ -1,32 +1,25 @@
 version: '3'
 services:
-  bootstrap_db:
+  zookeeper:
+    image: zookeeper:latest
+    ports:
+      - "2181:2181"
+  kafka:
+    image: wurstmeister/kafka:latest
     depends_on:
-      - postgres
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: 192.168.178.34
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_CREATE_TOPICS: 'metrics:1:1'
+    command: "start-kafka.sh"
+  postgres:
     image: postgres
-    volumes:
-      - "./init.sql:/tmp/init.sql"
-    env_file:
-      - ${ENV_FILE:env}
-    command: ["psql", "-f", "/tmp/init.sql"]
-  publisher:
-    depends_on:
-      - kafka
-    env_file:
-      - ${ENV_FILE:env}
-    build:
-      context: .
-    image: publisher:17
-    command: ["python", "publisher.py"]
-  subscriber:
-    volumes:
-      - "/tmp:/tmp/"
-    env_file:
-      - ${ENV_FILE:env}
-    depends_on:
-      - bootstrap_db
-      - kafka
-    build:
-      context: .
-    image: subscriber:17
-    command: ["python", "subscriber.py"]
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres

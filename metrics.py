@@ -2,7 +2,7 @@ import psutil
 import os
 import time
 import logging
-logging.basicConfig(level=logging.ERROR)
+logging.basicConfig(level=logging.INFO)
 
 
 class MetricsCollector:
