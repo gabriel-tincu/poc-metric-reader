@@ -100,6 +100,16 @@ class TestSubscriber(unittest.TestCase):
         data = self.subscriber.raw_data
         self.assertIsNotNone(data)
 
+    def test_decoding_succeeds(self):
+        self.subscriber.raw_data = mock_message
+        self.subscriber._decode()
+        self.assertIsNotNone(self.subscriber.data)
+        self.assertEqual(self.subscriber.data['data'], 'mock', 'malformed decoded package')
+
+    def test_decoding_fails(self):
+        self.subscriber.raw_data = b'not json'
+        self.assertRaises(MessageDecodeException, self.subscriber._decode)
+
 
 def clean_db():
     for t in ['cpu', 'disk', 'swap', 'network', 'ram']:

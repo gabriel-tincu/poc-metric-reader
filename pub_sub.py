@@ -8,6 +8,10 @@ import copy
 log = logging.getLogger(__name__)
 
 
+class MessageDecodeException(Exception):
+    pass
+
+
 class MetricPublisher:
     def __init__(
             self,
@@ -139,7 +143,9 @@ class MetricSubscriber:
         try:
             self.data = loads(self.raw_data.decode())
         except JSONDecodeError:
-            raise Exception(f'Badly formatted message: {self.raw_data}')
+            raise MessageDecodeException(
+                f'Badly formatted message: {self.raw_data}'
+            )
 
     def _save(self):
         if not self.data:
