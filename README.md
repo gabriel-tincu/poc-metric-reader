@@ -28,3 +28,9 @@ E2E tests were a pain in the a** due to the way the background threads communica
 One can make use of the docker compose file for local development. I have https://github.com/wurstmeister/kafka-docker to thank for the single broker kafka instance. 
 The shell scripts will not work with that though, as they expect fully populated certificate and key files (as per a proper Aiven service config)
 I tried using uuids as the topic names on each new test run, but either due to the async nature of kafka or due to my low level of knowledge regarding the system (more probable), that setup seemed to block indefinitely.
+
+#### TODO
+
+- Use custom pluggable serializer / deserializer OR integrate it with the kafka API (that means the message passing system would become tightly coupled)
+- Figure out how to make it work with random name topic creation
+- Add more metrics ?? (can't really think of any outstanding ones atm)
